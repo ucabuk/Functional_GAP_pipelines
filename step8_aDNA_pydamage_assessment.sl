@@ -2,116 +2,344 @@
 #===========================================================================
 # Author: Ugur Cabuk
 # Contact: ugur.cabuk@awi.de
-# Desc: Pydamage Workflow.v1
+# Desc: pyDamage workflow - FASTP uncorrected reads + Bowtie2
 #===========================================================================
 
-# given variables
+#SBATCH --account=envi.envi
+#SBATCH --job-name=pydamage_bt2
+#SBATCH --partition=smp
+#SBATCH --time=48:00:00
+#SBATCH --mem=240G
+#SBATCH --qos=48h
+#SBATCH --array=1-38%6
+#SBATCH --cpus-per-task=64
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=ugur.cabuk@awi.de
+#SBATCH --output=pydamage_bt2_%A_%a.out
+
+
 #===========================================================================
+# VARIABLES
+#===========================================================================
+
 WORK=${PWD}
+
 OUTDIR="output"
+
+# FASTP output: UNCORRECTED reads
 OUT_FASTP="out.fastp"
-OUT_TADPOLE="out.tadpole"
-OUT_MEGAHIT="out.megahit"
-OUT_BWA="out.bwa"
-OUT_PYDAMAGE="out.pydamage"
-TMP="tmp"
 
-# Set "YES" for what modules you want to run. E.g, If you get error in pydamage, do not need run bwa again, so leave it as a blank.
-RUN_BWA="YES"
+# Existing MEGAHIT assembly
+OUT_MEGAHIT="out.megahit_12_11"
+
+# IMPORTANT:
+# Keep Bowtie2 results separate from previous BWA-MEM results
+OUT_BOWTIE="out.bowtie_local_fastp_test_01"
+
+# Keep new pyDamage results separate as well
+OUT_PYDAMAGE="out.pydamage_fastp_bowtie_test_01"
+
+
+#===========================================================================
+# WHICH STEPS TO RUN?
+#===========================================================================
+
+RUN_BOWTIE="YES"
 RUN_PYDAMAGE="YES"
-RUN_KRAKEN="YES"
 
-mkdir -p ${WORK}/${OUTDIR}/${OUT_BWA}
+
+#===========================================================================
+# CREATE OUTPUT DIRECTORIES
+#===========================================================================
+
+mkdir -p ${WORK}/${OUTDIR}/${OUT_BOWTIE}
 mkdir -p ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}
 
-END_MERGED="_tadpole_ecc_fastp_merged_R2.fq.gz"
-REF="final.contigs.fa"
 
-cd ${OUTDIR}/${OUT_TADPOLE}
+#===========================================================================
+# IDENTIFY SAMPLE
+#===========================================================================
+
+# FASTP merged reads
+END_MERGED="_fastp_merged_R2.fq.gz"
+
+cd ${WORK}/${OUTDIR}/${OUT_FASTP}
+
 FILE_MERGED=$(ls *${END_MERGED} | sed -n ${SLURM_ARRAY_TASK_ID}p)
+
 SAMPLE_ID=${FILE_MERGED%${END_MERGED}}
+
 cd ${WORK}
 
-# This parameter for HPC, otherwise remove it here and also from kraken and pydamage parameter.
+echo "============================================================"
+echo "Sample: ${SAMPLE_ID}"
+echo "============================================================"
+
+
+#===========================================================================
+# CPU
+#===========================================================================
+
 CPU=${SLURM_CPUS_PER_TASK}
 
-#MODULES
-module load bwa
-module load samtools
-module load bamtools
-module load pydamage
-module load kraken2
 
-if [ "${RUN_BWA}" = "YES" ]; then
-# Here If statement has to be written, later!.
+#===========================================================================
+# MODULES
+#===========================================================================
 
-srun bwa index ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/final.contigs.fa
+module load bowtie2
+module load samtools/1.20
+module load bamtools/2.5.2
 
-# BWA-mapping to get coverage
-srun bwa mem ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/${REF} ${WORK}/${OUTDIR}/${OUT_TADPOLE}/${SAMPLE_ID}_tadpole_ecc_fastp_merged_R2.fq.gz > ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sam
-srun bwa mem ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/${REF} ${WORK}/${OUTDIR}/${OUT_TADPOLE}/${SAMPLE_ID}_tadpole_ecc_fastp_R1.fq.gz ${WORK}/${OUTDIR}/${OUT_TADPOLE}/${SAMPLE_ID}_tadpole_ecc_fastp_R2.fq.gz > ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sam
 
-srun samtools sort ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sam -o ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sorted.bam
-srun samtools sort ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sam -o ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sorted.bam
+#===========================================================================
+# REFERENCE
+#===========================================================================
 
-# Remove temporary files
-rm -rf ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sam
-rm -rf ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sam
+# IMPORTANT:
+# This is exactly the same MEGAHIT assembly that was used in the BWA-MEM
+# analysis. We are changing ONLY the mapper here.
 
-# Combine merge and paired bam files.
-srun bamtools merge -in ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sorted.bam -in ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sorted.bam -out ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}.merge_paired.bam
+REF=${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/${SAMPLE_ID}.fasta
 
-# Remove temporary files
-rm -rf ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_merged.sorted.bam
-rm -rf ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}_out_paired.sorted.bam
+# Bowtie2 index prefix
+BT2_INDEX=${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_contigs_index
 
-# Sort it again merge bam files
-srun samtools sort ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}.merge_paired.bam > ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}.merge_paired.sorted.bam
 
-# Remove temporary file
-rm -rf ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}.merge_paired.bam
+#===========================================================================
+# INPUT READS
+#===========================================================================
+
+# IMPORTANT:
+# These are FASTP reads BEFORE Tadpole/error correction.
+
+MERGED_READS=${WORK}/${OUTDIR}/${OUT_FASTP}/${SAMPLE_ID}_fastp_merged_R2.fq.gz
+
+PAIRED_R1=${WORK}/${OUTDIR}/${OUT_FASTP}/${SAMPLE_ID}_fastp_R1.fq.gz
+
+PAIRED_R2=${WORK}/${OUTDIR}/${OUT_FASTP}/${SAMPLE_ID}_fastp_R2.fq.gz
+
+
+#===========================================================================
+# BOWTIE2 MAPPING
+#===========================================================================
+
+if [ "${RUN_BOWTIE}" = "YES" ]; then
+
+    echo "============================================================"
+    echo "Running Bowtie2"
+    echo "Reference: ${REF}"
+    echo "============================================================"
+
+
+    #=======================================================================
+    # BUILD BOWTIE2 INDEX
+    #=======================================================================
+
+    srun bowtie2-build \
+        ${REF} \
+        ${BT2_INDEX}
+
+
+    #=======================================================================
+    # MAP MERGED READS
+    #
+    # --end-to-end:
+    #     prevents terminal soft clipping.
+    #
+    # --very-sensitive:
+    #     increases mapping sensitivity.
+    #
+    # -N 1:
+    #     allows one mismatch in the seed.
+    #
+    # These settings are appropriate for the pyDamage comparison.
+    #=======================================================================
+
+    srun bowtie2 \
+        --end-to-end \
+        --very-sensitive \
+        -N 1 \
+        -p ${CPU} \
+        -x ${BT2_INDEX} \
+        -U ${MERGED_READS} \
+        -S ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sam
+
+
+    #=======================================================================
+    # MAP PAIRED-END UNMERGED READS
+    #=======================================================================
+
+    srun bowtie2 \
+        --end-to-end \
+        --very-sensitive \
+        -N 1 \
+        -p ${CPU} \
+        -x ${BT2_INDEX} \
+        -1 ${PAIRED_R1} \
+        -2 ${PAIRED_R2} \
+        -S ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sam
+
+
+    #=======================================================================
+    # SORT SAM -> BAM
+    #=======================================================================
+
+    srun samtools sort \
+        -@ ${CPU} \
+        -o ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sorted.bam \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sam
+
+
+    srun samtools sort \
+        -@ ${CPU} \
+        -o ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sorted.bam \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sam
+
+
+    #=======================================================================
+    # REMOVE TEMPORARY SAM FILES
+    #=======================================================================
+
+    rm -f \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sam
+
+    rm -f \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sam
+
+
+    #=======================================================================
+    # MERGE:
+    # merged reads BAM
+    # +
+    # paired-end BAM
+    #=======================================================================
+
+    srun bamtools merge \
+        -in ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sorted.bam \
+        -in ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sorted.bam \
+        -out ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.bam
+
+
+    #=======================================================================
+    # REMOVE INTERMEDIATE BAM FILES
+    #=======================================================================
+
+    rm -f \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_merged.sorted.bam
+
+    rm -f \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_out_paired.sorted.bam
+
+
+    #=======================================================================
+    # SORT FINAL MERGED BAM
+    #=======================================================================
+
+    srun samtools sort \
+        -@ ${CPU} \
+        -o ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.sorted.bam \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.bam
+
+
+    #=======================================================================
+    # INDEX FINAL BAM
+    #=======================================================================
+
+    srun samtools index \
+        -@ ${CPU} \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.sorted.bam
+
+
+    #=======================================================================
+    # REMOVE UNSORTED MERGED BAM
+    #=======================================================================
+
+    rm -f \
+        ${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.bam
+
+
+    echo "============================================================"
+    echo "Bowtie2 mapping finished."
+    echo "============================================================"
+
 else
-    echo "Skipping BWA ANALYSIS."
+
+    echo "Skipping Bowtie2 analysis."
+
 fi
 
+
+#===========================================================================
 # PYDAMAGE
+#===========================================================================
+
 if [ "${RUN_PYDAMAGE}" = "YES" ]; then
 
-srun pydamage --outdir ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID} analyze ${WORK}/${OUTDIR}/${OUT_BWA}/${SAMPLE_ID}.merge_paired.sorted.bam -p ${CPU}
+    #module load pydamage/0.72
+    source /albedo/home/ugcabuk/miniforge3/etc/profile.d/conda.sh
+    conda activate pydamage_v1	
 
-awk -F, -v OFS=, -v prefix="$SAMPLE_ID" 'NR==1{print "sample_name," $0; next} {print prefix, $0}' "${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}/pydamage_results.csv" > ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}_name_added_pydamage_result.csv
 
-# no need to do it.
-# mv ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}/pydamage_result.csv ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}_pydamage_result.csv
+    BAM=${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.sorted.bam
 
+
+    #=======================================================================
+    # CHECK BAM INDEX
+    #=======================================================================
+
+    if [[ ! -f ${BAM}.bai ]]; then
+
+        echo "BAM index not found. Creating index..."
+
+        srun samtools index \
+            -@ ${CPU} \
+            ${BAM}
+
+    fi
+
+
+    #=======================================================================
+    # RUN PYDAMAGE
+    #=======================================================================
+
+    srun pydamage \
+        --outdir ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID} \
+        analyze \
+        ${BAM} \
+        -p ${CPU} \
+        --force
+
+
+    #=======================================================================
+    # ADD SAMPLE NAME TO pyDamage CSV
+    #=======================================================================
+
+    awk \
+        -F, \
+        -v OFS=, \
+        -v prefix="${SAMPLE_ID}" \
+        'NR==1 {
+            print "sample_name," $0;
+            next
+        }
+        {
+            print prefix, $0
+        }' \
+        "${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}/pydamage_results.csv" \
+        > \
+        "${WORK}/${OUTDIR}/${OUT_PYDAMAGE}/${SAMPLE_ID}_name_added_pydamage_result.csv"
+
+
+    module unload pydamage/0.72
+
+
+    echo "============================================================"
+    echo "pyDamage finished."
+    echo "============================================================"
+    conda deactivate
 else
-echo "Skipping DAMAGE PATTERN ANALYSIS."
+
+    echo "Skipping pyDamage."
+
 fi
-
-# KRAKEN FOR ASSEMBLIES
-
-# NT database or custom database
-DB="set-path-to-the-database"
-
-# please do not change the level, otherwise, you will get nothing.
-CONFIDENCE="0"
-
-if [ "${RUN_KRAKEN}" = "YES" ]; then
-  if [[ ! -f ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${ID}_conf${CONFIDENCE}_contig.kraken ]]
-then
-    srun kraken2 --confidence ${CONFIDENCE} --db ${DB} ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/final.contigs.fa --threads ${CPU} --output ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}_conf${CONFIDENCE}_contig.kraken \\
-    --report ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}_conf${CONFIDENCE}_contig.kraken.report
-    awk -v sample="$SAMPLE_ID" '{print sample, $0}' OFS="\t" } ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}_conf${CONFIDENCE}_contig.kraken | cut -f1-4 > ${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}_conf${CONFIDENCE}_contig_added_sample_name.kraken
-else
-    echo "${SAMPLE_ID} already exists on your filesystem [check "ref" directory]"
-fi
-echo ""
-else
-    echo "Skipping KRAKEN ANALYSIS."
-
-module unload bwa
-module unload samtools
-module unload bamtools
-module unload pydamage
-module unload kraken2
-
