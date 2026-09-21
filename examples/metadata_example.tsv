@@ -1,0 +1,4 @@
+sample_id	site	age_yr_bp	period	environment
+sample_01	site_A	8500	Holocene	terrestrial
+sample_02	site_A	25000	Glacial	terrestrial
+sample_03	site_B	145000	Interglacial	marine

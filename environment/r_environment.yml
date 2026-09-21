@@ -1,0 +1,11 @@
+name: functional_gap_r
+
+channels:
+  - conda-forge
+
+dependencies:
+  - r-base
+  - r-data.table
+  - r-dplyr
+  - r-tidyr
+  - r-stringr
