@@ -45,7 +45,7 @@ mkdir -p ${OUTDIR}/${OUT_SALMON_MERGED}
 rm -f \
     ${OUTDIR}/${OUT_SALMON_MERGED}/${OUTDIR}_all_raw_quant.sf \
     ${OUTDIR}/${OUT_SALMON_MERGED}/${OUTDIR}_gene_quant.raw.count.len \
-    ${OUTDIR}/${OUT_SALMON_MERGED}/${OUTDIR}_all_cpm_quant.sf
+    ${OUTDIR}/${OUT_SALMON_MERGED}/${OUTDIR}_all_tpm_quant.sf
 
 
 #===========================================================================
@@ -86,7 +86,7 @@ module load salmon/1.10.2
 
 srun salmon quantmerge \
     --quants ${OUTDIR}/${OUT_SALMON_MERGED}/* \
-    --output ${OUTDIR}/${OUTDIR}_all_cpm_quant.sf
+    --output ${OUTDIR}/${OUTDIR}_all_tpm_quant.sf
 
 
 srun salmon quantmerge \
@@ -101,7 +101,7 @@ srun salmon quantmerge \
     --output ${OUTDIR}/${OUTDIR}_gene_quant.raw.count.len
 
 
-mv ${OUTDIR}/${OUTDIR}_all_cpm_quant.sf \
+mv ${OUTDIR}/${OUTDIR}_all_tpm_quant.sf \
     ${OUTDIR}/${OUT_SALMON_MERGED}/.
 
 
