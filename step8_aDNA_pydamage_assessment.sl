@@ -26,41 +26,24 @@ WORK=${PWD}
 
 OUTDIR="output"
 
-# FASTP output: UNCORRECTED reads
 OUT_FASTP="out.fastp"
 
-# Existing MEGAHIT assembly
-OUT_MEGAHIT="out.megahit_12_11"
+OUT_MEGAHIT="out.megahit"
 
-# IMPORTANT:
-# Keep Bowtie2 results separate from previous BWA-MEM results
-OUT_BOWTIE="out.bowtie_local_fastp_test_01"
+OUT_BOWTIE="out.bowtie"
 
-# Keep new pyDamage results separate as well
-OUT_PYDAMAGE="out.pydamage_fastp_bowtie_test_01"
+OUT_PYDAMAGE="out.pydamage"
 
 
-#===========================================================================
-# WHICH STEPS TO RUN?
-#===========================================================================
-
+# Which step to run? 
 RUN_BOWTIE="YES"
 RUN_PYDAMAGE="YES"
 
-
-#===========================================================================
-# CREATE OUTPUT DIRECTORIES
-#===========================================================================
 
 mkdir -p ${WORK}/${OUTDIR}/${OUT_BOWTIE}
 mkdir -p ${WORK}/${OUTDIR}/${OUT_PYDAMAGE}
 
 
-#===========================================================================
-# IDENTIFY SAMPLE
-#===========================================================================
-
-# FASTP merged reads
 END_MERGED="_fastp_merged_R2.fq.gz"
 
 cd ${WORK}/${OUTDIR}/${OUT_FASTP}
@@ -76,31 +59,16 @@ echo "Sample: ${SAMPLE_ID}"
 echo "============================================================"
 
 
-#===========================================================================
-# CPU
-#===========================================================================
-
 CPU=${SLURM_CPUS_PER_TASK}
 
 
-#===========================================================================
-# MODULES
-#===========================================================================
-
+# check always new version in the server
 module load bowtie2
 module load samtools/1.20
 module load bamtools/2.5.2
 
 
-#===========================================================================
-# REFERENCE
-#===========================================================================
-
-# IMPORTANT:
-# This is exactly the same MEGAHIT assembly that was used in the BWA-MEM
-# analysis. We are changing ONLY the mapper here.
-
-REF=${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/${SAMPLE_ID}.fasta
+REF=${WORK}/${OUTDIR}/${OUT_MEGAHIT}/${SAMPLE_ID}/final.contigs.fasta
 
 # Bowtie2 index prefix
 BT2_INDEX=${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_contigs_index
@@ -109,9 +77,6 @@ BT2_INDEX=${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}_contigs_index
 #===========================================================================
 # INPUT READS
 #===========================================================================
-
-# IMPORTANT:
-# These are FASTP reads BEFORE Tadpole/error correction.
 
 MERGED_READS=${WORK}/${OUTDIR}/${OUT_FASTP}/${SAMPLE_ID}_fastp_merged_R2.fq.gz
 
@@ -153,7 +118,7 @@ if [ "${RUN_BOWTIE}" = "YES" ]; then
     # -N 1:
     #     allows one mismatch in the seed.
     #
-    # These settings are appropriate for the pyDamage comparison.
+    #
     #=======================================================================
 
     srun bowtie2 \
@@ -276,9 +241,7 @@ fi
 
 if [ "${RUN_PYDAMAGE}" = "YES" ]; then
 
-    #module load pydamage/0.72
-    source /albedo/home/ugcabuk/miniforge3/etc/profile.d/conda.sh
-    conda activate pydamage_v1	
+    module load pydamage/1.0
 
 
     BAM=${WORK}/${OUTDIR}/${OUT_BOWTIE}/${SAMPLE_ID}.merge_paired.sorted.bam
