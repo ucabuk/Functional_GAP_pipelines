@@ -85,13 +85,20 @@ read_pydamage_directory <- function(pydamage_dir) {
 
     expected_model_cols <- c(
         "predicted_accuracy",
+        "null_model_p0",
+        "null_model_p0_stdev",
         "damage_model_p",
+        "damage_model_p_stdev",
         "damage_model_pmin",
+        "damage_model_pmin_stdev",
         "damage_model_pmax",
+        "damage_model_pmax_stdev",
         "pvalue",
         "qvalue",
+        "RMSE",
         "nb_reads_aligned",
-        "coverage"
+        "coverage",
+        "reflen"
     )
 
     missing_model_cols <- setdiff(expected_model_cols, names(result))
