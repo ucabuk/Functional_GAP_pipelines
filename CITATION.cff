@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use Functional GAP Pipelines, please cite the software release and the associated publication."
+
+title: "Functional GAP Pipelines"
+type: software
+version: "2.0.0"
+
+authors:
+  - family-names: "Çabuk"
+    given-names: "Uğur"
+  - family-names: "Herzschuh"
+    given-names: "Ulrike"
+  - family-names: "Harms"
+    given-names: "Lars"
+  - family-names: "von Hippel"
+    given-names: "Barbara"
+  - family-names: "Stoof-Leichsenring"
+    given-names: "Kathleen R."
+
+repository-code: "https://github.com/PolarTerrestrialEnvironmentalSystems/Functional_GAP_pipelines"
+
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Çabuk"
+      given-names: "Uğur"
+    - family-names: "Herzschuh"
+      given-names: "Ulrike"
+    - family-names: "Harms"
+      given-names: "Lars"
+    - family-names: "von Hippel"
+      given-names: "Barbara"
+    - family-names: "Stoof-Leichsenring"
+      given-names: "Kathleen R."
+  title: "Functional annotation of eukaryotic genes from sedimentary ancient DNA"
+  journal: "Frontiers in Ecology and Evolution"
+  volume: "13"
+  year: 2025
+  doi: "10.3389/fevo.2025.1459690"
