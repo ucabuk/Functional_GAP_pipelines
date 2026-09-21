@@ -1,9 +1,9 @@
 # Author: Ugur Cabuk
 #!/bin/python3
 import os
-
+import sys
 def sum_up_num_reads(file1_path, file2_path, output_path):
-    # Read for the first file
+    # Read data from the first file
     data1 = {}
     with open(file1_path, 'r') as file1:
         next(file1)  # skip the header
@@ -26,13 +26,25 @@ def sum_up_num_reads(file1_path, file2_path, output_path):
                     fields[4] = str(sum_num_reads)
                 output_file.write('\t'.join(fields) + '\n')
 
-def process_directory(directory):
-    for file_name in os.listdir(directory):
+
+def process_directory(input_directory, output_directory):
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    for file_name in os.listdir(input_directory):
         if file_name.endswith("_merged"):
-            merged_file_path = os.path.join(directory, file_name, "quant.sf")
-            paired_file_path = os.path.join(directory, file_name.replace("_merged", "_paired"), "quant.sf")
-            output_file_path = os.path.join(directory, file_name.replace("_merged", "_merged_paired.quant.sf"))
+            merged_file_path = os.path.join(input_directory, file_name, "quant.sf")
+            paired_file_path = os.path.join(input_directory, file_name.replace("_merged", "_paired"), "quant.sf")
+            output_file_name = file_name.replace("_merged", "_merged_paired.quant.sf")
+            output_file_path = os.path.join(output_directory, output_file_name)
             sum_up_num_reads(merged_file_path, paired_file_path, output_file_path)
 
-directory_path = input("Enter the path to the directory containing merged and paired files: ")
-process_directory(directory_path)
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <input_directory_path> <output_directory_path>")
+        sys.exit(1)
+
+    input_directory_path = sys.argv[1]
+    output_directory_path = sys.argv[2]
+    process_directory(input_directory_path, output_directory_path)
+

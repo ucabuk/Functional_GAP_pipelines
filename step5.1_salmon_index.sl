@@ -2,32 +2,75 @@
 #===========================================================================
 # Author: Ugur Cabuk
 # Contact: ugur.cabuk@awi.de
-# Desc: Salmon Gene Catalog Index
+# Desc: Build Salmon index from the non-redundant pCDS catalog
 #===========================================================================
 
-# this is a prokGAP input example. This should be changed based on the pipeline.
-OUT_NUCL="out.prodigal/non_redundant_PROKGAP_protein_to_pCDS.fna"
+#SBATCH --account=envi.envi
+#SBATCH --job-name=salmon_index
+#SBATCH --partition=fat
+#SBATCH --time=48:00:00
+#SBATCH --qos=48h
+#SBATCH --mem=450G
+#SBATCH --cpus-per-task=64
+#SBATCH --output=salmon_index_%j.out
+
+# Add your e-mail settings if SLURM notifications are needed.
+# Example:
+# #SBATCH --mail-type=END,FAIL
+# #SBATCH --mail-user=your.email@institute.de
+
+
+#===========================================================================
+# VARIABLES
+#===========================================================================
 
 WORK=${PWD}
+
 OUTDIR="output"
-OUT_TADPOLE="out.tadpole"
+
 OUT_PRODIGAL="out.prodigal"
-OUT_METAEUK="out.metaeuk"
-OUT_TIARA="out.tiara"
+
 OUT_SALMON="out.salmon"
 
-# Salmon index
-SALMON_INDEX="non_redundant_PROKGAP_protein_to_pCDS.fna.index"
+
+OUT_NUCL="non_redundant_pCDS_catalog.fna"
+
+SALMON_INDEX="non_redundant_pCDS_catalog.index"
+
+
+CPU=${SLURM_CPUS_PER_TASK}
+
 
 mkdir -p ${OUTDIR}/${OUT_SALMON}
 
-# Here check If there is an index and If not, copy the file to SSD for faster processing.
 
-if [[ -n "$(find ${OUTDIR}/${OUT_SALMON}/ -name '*.index')" ]]
-then
-        echo "${SALMON_INDEX} found in ${OUTDIR}/${OUT_SALMON}"
+#===========================================================================
+# SALMON INDEX
+#===========================================================================
+
+module load salmon/1.10.2
+
+
+if [[ -f ${OUTDIR}/${OUT_SALMON}/${SALMON_INDEX}/versionInfo.json ]]; then
+
+    echo "Salmon index already exists:"
+    echo "${OUTDIR}/${OUT_SALMON}/${SALMON_INDEX}"
+
 else
-        rsync -ur ${OUTDIR}/${OUT_PRODIGAL}/${OUT_NUCL} /tmp/.
-        srun salmon index -t /tmp/${OUT_NUCL} -i /tmp/${SALMON_INDEX} -p 64
-        rsync -ur /tmp/${SALMON_INDEX} ${OUTDIR}/${OUT_SALMON}/.
+
+    echo "Building Salmon index..."
+
+    srun salmon index \
+        -t ${OUTDIR}/${OUT_PRODIGAL}/${OUT_NUCL} \
+        -i ${OUTDIR}/${OUT_SALMON}/${SALMON_INDEX} \
+        -p ${CPU}
+
 fi
+
+
+module unload salmon/1.10.2
+
+
+echo "============================================================"
+echo "Salmon index finished."
+echo "============================================================"
