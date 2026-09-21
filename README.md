@@ -1532,3 +1532,37 @@ If this repository is placed in a common server directory for multiple users:
 6. Use one working directory per dataset to avoid accidentally combining samples from different projects.
 
 This keeps the shared installation reproducible while allowing each project to maintain its own outputs, metadata and cluster-specific settings.
+
+---
+
+## Citation
+
+If you use Functional GAP Pipelines in published research, please cite the
+specific software release used in your analysis together with the publication
+describing the original Functional GAP workflow.
+
+### Software
+
+Çabuk U, Herzschuh U, Harms L, von Hippel B, Stoof-Leichsenring KR.
+**Functional GAP Pipelines, version 2.0.0.**
+
+Zenodo DOI: to be added after the v2.0.0 release.
+
+Please report the exact software version used in the Methods section to support
+reproducibility.
+
+### Associated publication
+
+Çabuk U, Herzschuh U, Harms L, von Hippel B, Stoof-Leichsenring KR (2025).
+**Functional annotation of eukaryotic genes from sedimentary ancient DNA.**
+Frontiers in Ecology and Evolution, 13:1459690.  
+https://doi.org/10.3389/fevo.2025.1459690
+
+Functional GAP Pipelines v2.0.0 is a continued and updated software release of
+the workflow originally introduced in the publication above.
+
+Routine use of the pipeline does not imply co-authorship. If substantial
+project-specific software development, methodological adaptation, data
+analysis, or scientific interpretation is contributed by the pipeline
+developers, collaboration and authorship should be discussed separately
+according to the contribution and the authorship policy of the target journal.
